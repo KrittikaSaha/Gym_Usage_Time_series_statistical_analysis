@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
-
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+warnings.simplefilter(action='ignore', category=UserWarning)
 ###################################################################################################
 #                                     Task 1                                                      #
 ###################################################################################################
@@ -14,7 +16,11 @@ gym_hourly_df = gym_10_min_df.resample('60min', on='time').sum().reset_index()
 
 #gym_hourly_df['hour']= gym_hourly_df.time.dt.hour
 #present first 10 rows
-print(f'first 10 rows of hourly sampled data: {gym_hourly_df.head(10)}')
+print("############################################# Task 1 ######################################################")
+print()
+print(f'first 10 rows of hourly sampled data: ')
+print(gym_hourly_df.head(10))
+print()
 
 
 
@@ -30,25 +36,26 @@ def calculate_max_usage(df):
     
     max_usage_minutes = max(total_usage, key=lambda x: x['usage_minutes'])
     max_usage_sensor = max_usage_minutes['sensor']
-    print(f'Most popular device: {max_usage_sensor}')
-    return max_usage_sensor
+    return max_usage_sensor, max_usage_minutes['usage_minutes']
 
-most_popular = calculate_max_usage(gym_10_min_df)
-print(f""" Most popular device was {most_popular} with total {most_popular['usage_minutes']} minutes spent""")
+most_popular, max_minutes = calculate_max_usage(gym_10_min_df)
+print()
+print("############################################# Task 3 ######################################################")
+print()
+print(f"""Most popular device was {most_popular} with total {max_minutes} minutes spent""")
 
 ##################################################################################################################################################
 
 # impact of hour on popularity of outer gym
 
-hourly_usage= gym_hourly_df.groupby('hour').sum()
-
-# transpose the DataFrame
-df_transposed = hourly_usage.T
+gym_hourly_df['hour'] = gym_hourly_df['time'].dt.hour
+df_hourly= gym_hourly_df.groupby('hour').sum()
 
 # calculate the sum of each row
-df_transposed['sum'] = df_transposed.sum(axis=1)
-most_popular_hour = df_transposed['sum'].idxmax()
-max_minutes= df_transposed['sum'].max()
+df_hourly['sum'] = df_hourly.sum(axis=1)
+most_popular_hour = df_hourly['sum'].idxmax()
+max_minutes= df_hourly['sum'].max()
+print()
 print(f'Most populous hour was {most_popular_hour}:00 hrs with total {max_minutes} minutes spent')
 
 ##################################################################################################################################################
@@ -72,7 +79,8 @@ mean_usage = calculate_mean_usage(weekday_usage.T)
 avg_wknd_usage = np.mean([mean_usage['Saturday'],mean_usage['Sunday']])
 avg_wkday_usage = np.mean([v for k, v in mean_usage.items() if k not in ('Saturday', 'Sunday')])
 
-print(f'Avg weekday usage: {avg_wkday_usage}, whereas avg weekend usage: {avg_wknd_usage}, hence gym was not more popular on weekends')
+print()
+print(f'Avg weekday usage: {avg_wkday_usage}, whereas avg weekend usage: {avg_wknd_usage}, hence gym was not more popular on weekdays')
 
         
 
@@ -90,10 +98,14 @@ gym_10_min_df['Hour'] = gym_10_min_df['time'].dt.strftime('%H:%M')
 # Sum of minutes across all gym devices
 gym_10_min_df['sum'] = gym_10_min_df.drop(['time','weekday','Hour'], axis=1).sum(axis=1)
 
-gym_10_min_df.head(10)
+print()
+print("############################################# Task 4 ######################################################")
+print()
+print(" 10 min gym usage data with added columns")
+print(gym_10_min_df.head(2))
 
 
-
+##############################################################################
 
 gym_hourly_df['weekday'] = gym_hourly_df['time'].dt.weekday
 
@@ -103,7 +115,10 @@ gym_hourly_df['hour'] = gym_hourly_df['time'].dt.strftime('%H:%M')
 # Sum of minutes across all gym devices
 gym_hourly_df['sum'] = gym_hourly_df.drop(['time','weekday','hour'], axis=1).sum(axis=1)
 
-gym_hourly_df.head(10)
+
+print()
+print(" hourly gym usage data with added columns")
+print(gym_hourly_df.head(2))
 ###################################################################################################
 #                                     Task 5.1 simple corr                                        #
 ###################################################################################################    
@@ -111,7 +126,7 @@ gym_hourly_df.head(10)
 #impact of weather on gym popularity
 
 kaisaniemi_weather_data = pd.read_csv('kaisaniemi-weather-data.csv')
-kaisaniemi_weather_data.head(10)
+#kaisaniemi_weather_data.head(10)
 
 # combine columns and add timezone information
 
@@ -141,14 +156,17 @@ merged_10min_df = pd.merge(gym_10_min_df, kaisaniemi_weather_10_min.drop(columns
 # The following analysis on the rest of the script is done using hourly aggreagate merged data, so as to not use data with noise introduced by ffill
 
 # impact of temperature on popularity of outer gym
+print()
+print("############################################# Task 5 ######################################################")
+print()
 corr_temp = merged_df['Temperature (degC)'].corr(merged_df['sum'])
 
 # print the correlation coefficient
-print(f'Correlation coefficient: {corr_temp:.2f}')
+print(f'Correlation coefficient for temperature: {corr_temp:.2f}')
 # A correlation coefficient of 0.33 suggests a moderate positive correlation 
 # between the two variables being compared. However, it is important to keep in mind 
-# that correlation does not imply causation and there could be other factors at play t
-# hat are affecting the relationship between the variables.
+# that correlation does not imply causation and there could be other factors at play 
+# that are affecting the relationship between the variables.
 
 ###########################################################################################
 
@@ -165,6 +183,8 @@ merged_df = pd.concat([merged_df, snow_dummies], axis=1)
 # calculate correlation between snow dummies and gym_usage column
 corr_snow = merged_df[['Snow_No Snow', 'Snow_Snow Possible', 'Snow_Snow', 'sum']].corr()
 
+# print the correlation coefficient
+print(f'Correlation coefficient for snow depth:')
 print(corr_snow)
 # The 'Snow_No Snow' column has a positive correlation of 1 with itself (as expected).
 # The 'Snow_Snow Possible' column has a negative correlation of 0.63 with the 'Snow_No Snow' column, 
@@ -182,15 +202,25 @@ print(corr_snow)
 
 # ML
 
-# move column 'sum' to the last position
-#new_order = [col for col in merged_df.columns if col != 'sum'] + ['sum']
-#merged_df = merged_df.reindex(columns=new_order)
-#merged_df.drop(columns=['Timezone','timestring']).to_csv('merged.csv')
-
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
 from sklearn.impute import SimpleImputer
+
+
+# Weekday as integer
+merged_df['weekday'] = merged_df['weekday'].astype(int)
+# hour as integer
+merged_df['hour'] = merged_df.time.dt.hour.astype(int)
+
+# Precipitation in millimeters as float
+merged_df['Precipitation (mm)'] = merged_df['Precipitation (mm)'].astype(float)
+
+# Snow depth in centimiters as float
+merged_df['Snow depth (cm)'] = merged_df['Snow depth (cm)'].astype(float)
+
+# Temperature in Celsius as float
+merged_df['Temperature (degC)'] = merged_df['Temperature (degC)'].astype(float)
 
 nan_cols = merged_df.columns[merged_df.isna().any()].tolist()
 
@@ -225,6 +255,10 @@ r2 = r2_score(y_test, y_pred)
 evs = explained_variance_score(y_test, y_pred)
 mae = mean_absolute_error(y_test, y_pred)
 
+print()
+print("############################################# Task 5: Linear regressor  ######################################################")
+print()
+print("Error metrics for Linear regressor")
 print(f"Mean Squared Error: {mse}")
 print(f"R-squared: {r2}")
 print(f"Explained Variance Score: {evs}")
@@ -247,8 +281,25 @@ features_df = pd.DataFrame({'Feature': X.columns, 'Importance': importance})
 features_df = features_df.sort_values('Importance', ascending=False)
 
 # Print the feature importance values
+print()
+print("Feature importance for Linear regressor")
 print(features_df)
 
+
+# Based on the feature importance values, it appears that the most important features for predicting gym usage are
+# 'Snow_Snow Possible', 'Snow_Snow', and 'temp', with 'Snow_Snow Possible' being the most important. 
+
+#The feature with the largest negative coefficient is "Snow_No Snow" with a coefficient of -31.87,
+# followed by "precp" with a coefficient of -17.40. This suggests that when these features are present, they have a strong negative effect on the target variable.
+
+#The feature "temp" has a positive coefficient, but it is much smaller than the coefficients of the snow-related features, s
+# uggesting that its effect on the target variable is weaker.
+# 
+# The feature importance values can be interpreted as follows:
+# 
+# A positive value indicates that the feature has a positive impact on the model's predictions, meaning that an increase in that feature's value is associated with an increase in gym usage.
+# A negative value indicates that the feature has a negative impact on the model's predictions, meaning that an increase in that feature's value is associated with a decrease in gym usage.
+# The larger the absolute value of the feature importance, the more impact the feature has on the model's predictions.
 
 ###################################################################################################
 #                                     Task 5.3 Random Forest Regressor                            #
@@ -274,6 +325,10 @@ r2 = r2_score(y_test, y_pred)
 evs = explained_variance_score(y_test, y_pred)
 mae = mean_absolute_error(y_test, y_pred)
 
+print()
+print("############################################# Task 5 Random Forrest Regressor ######################################################")
+print()
+print("Error metrics for Random Forrest regressor")
 print(f"Mean Squared Error: {mse}")
 print(f"R-squared: {r2}")
 print(f"Explained Variance Score: {evs}")
@@ -284,17 +339,15 @@ print(f"Mean Absolute Error: {mae}")
 # The mean absolute error is also quite high. This indicates that the model is not able to 
 # capture the relationship between the features and the target variable and is essentially making random predictions.
 
-# Get feature importance
-importance = model.coef_
+# Get feature importances
+importances = model.feature_importances_
+indices = np.argsort(importances)[::-1]
 
-# Create a dataframe to store the feature importance values
-features_df = pd.DataFrame({'Feature': X.columns, 'Importance': importance})
-
-# Sort the dataframe by feature importance in descending order
-features_df = features_df.sort_values('Importance', ascending=False)
-
-# Print the feature importance values
-print(features_df)
+# Print feature importances
+print()
+print("Feature importance for Random Forrest regressor")
+for i in range(X.shape[1]):
+    print(f"{X.columns[indices[i]]} \t {importances[indices[i]]}")
 
 
 ###################################################################################################
@@ -317,11 +370,16 @@ y_pred = model.predict(X_test)
 
 
 # y_test and y_pred are the true and predicted target values respectively
+
 mse = mean_squared_error(y_test, y_pred)
 r2 = r2_score(y_test, y_pred)
 evs = explained_variance_score(y_test, y_pred)
 mae = mean_absolute_error(y_test, y_pred)
 
+print()
+print("############################################# Task 5 Gradient Boosting Regressor ######################################################")
+print()
+print("Error metrics for Gradient Boosting regressor")
 print(f"Mean Squared Error: {mse}")
 print(f"R-squared: {r2}")
 print(f"Explained Variance Score: {evs}")
@@ -334,34 +392,37 @@ print(f"Mean Absolute Error: {mae}")
 # The higher R-squared and Explained Variance Score indicate that the model is able to explain more of the variance in the data.
 
 
-# Get feature importance
-importance = model.coef_
+# Get feature importance# Get feature importances
+importances = model.feature_importances_
+indices = np.argsort(importances)[::-1]
 
-# Create a dataframe to store the feature importance values
-features_df = pd.DataFrame({'Feature': X.columns, 'Importance': importance})
+# Print feature importances
+print()
+print("Feature importance for Gradient Boosting regressor")
+for i in range(X.shape[1]):
+    print(f"{X.columns[indices[i]]} \t {importances[indices[i]]}")
 
-# Sort the dataframe by feature importance in descending order
-features_df = features_df.sort_values('Importance', ascending=False)
+#The feature importance for the Gradient Boosting Regressor is given above. 
+# It is calculated using the feature_importances_ attribute of the model. 
+# The values are between 0 and 1 and represent the relative importance of each feature in predicting the target variable.
+#
+#In this case, the most important feature is the hour of the day,
+# with an importance value of 0.6305. 
+# This suggests that the time of day is a significant predictor of gym usage. 
+# The next most important feature is temperature, with an importance value of 0.2849. 
+# This indicates that temperature is also an important predictor, but not as significant as the time of day. 
+# The other features have relatively lower importance values and suggest that they may have less impact on predicting gym usage.
 
-# Print the feature importance values
-print(features_df)
 
-
-# Based on the feature importance values, it appears that the most important features for predicting gym usage are
-# 'Snow_Snow Possible', 'Snow_Snow', and 'temp', with 'Snow_Snow Possible' being the most important. 
-# The feature 'Snow_No Snow' appears to have a negative impact on the model's performance, indicating that the presence of snow may discourage gym usage.
-# 
-# The feature importance values can be interpreted as follows:
-# 
-# A positive value indicates that the feature has a positive impact on the model's predictions, meaning that an increase in that feature's value is associated with an increase in gym usage.
-# A negative value indicates that the feature has a negative impact on the model's predictions, meaning that an increase in that feature's value is associated with a decrease in gym usage.
-# The larger the absolute value of the feature importance, the more impact the feature has on the model's predictions.
 
 
 ###################################################################################################
 #                                     Task 6                                                      #
 ###################################################################################################    
 
+print()
+print("############################################# Task 6 Loading inferences from pretrained model ######################################################")
+print()
 import joblib
 model = joblib.load('model.pkl')
 
@@ -383,6 +444,7 @@ merged_df['Temperature (degC)'] = merged_df['Temperature (degC)'].astype(float)
 
 new_order = ['weekday','hour','Precipitation (mm)','Snow depth (cm)','Temperature (degC)']
 test = merged_df.reindex(columns=new_order)
+
 
 model.predict(test.dropna())
 
@@ -408,7 +470,7 @@ df_imputed['Temperature (degC)'] = imputer.fit_transform(merged_df[['Temperature
 df_imputed = df_imputed[['weekday','hour','Precipitation (mm)','Snow depth (cm)','Temperature (degC)']]
 
 # print the result
-print(df_imputed)
+#print(df_imputed)
 
 # predictions
 df_imputed['predictions']=model.predict(df_imputed)
@@ -419,4 +481,6 @@ processed_dataset_with_predictions = merged_df.join(df_imputed['predictions'])[[
        'weekday', 'Year', 'Month', 'Day', 'Timezone',
        'Precipitation (mm)', 'Snow depth (cm)', 'Temperature (degC)','sum', 'predictions']]
 
-
+print( f"Task 6: Predictions for dataset with loaded model:")
+print()
+print(processed_dataset_with_predictions)
