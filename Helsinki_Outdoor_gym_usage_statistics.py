@@ -169,6 +169,12 @@ print(f'Correlation coefficient for temperature: {corr_temp:.2f}')
 # that are affecting the relationship between the variables.
 
 ###########################################################################################
+# impact of precipitation
+
+corr_precipitation = merged_df['Precipitation (mm)'].corr(merged_df['sum'])
+
+# print the correlation coefficient
+print(f'Correlation coefficient for precipitation: {corr_precipitation:.2f}')
 
 #impact of snow 
 
@@ -201,6 +207,87 @@ print(corr_snow)
 ###################################################################################################   
 
 # ML
+
+from sklearn.metrics import mean_squared_error
+from sklearn.impute import SimpleImputer
+
+# Weekday as integer
+merged_df['weekday'] = merged_df['weekday'].astype(int)
+# hour as integer
+merged_df['hour'] = merged_df.time.dt.hour.astype(int)
+
+# Precipitation in millimeters as float
+merged_df['Precipitation (mm)'] = merged_df['Precipitation (mm)'].astype(float)
+
+# Snow depth in centimiters as float
+merged_df['Snow depth (cm)'] = merged_df['Snow depth (cm)'].astype(float)
+
+# Temperature in Celsius as float
+merged_df['Temperature (degC)'] = merged_df['Temperature (degC)'].astype(float)
+
+nan_cols = merged_df.columns[merged_df.isna().any()].tolist()
+
+# create an imputer object with the desired strategy (e.g., mean, median, most_frequent, constant)
+imputer = SimpleImputer(strategy='mean')
+
+
+# transform the DataFrame to replace NaN values with the imputed values
+merged_df['precp'] = imputer.fit_transform(merged_df[['Precipitation (mm)']])
+merged_df['snowd'] = imputer.fit_transform(merged_df[['Snow depth (cm)']])
+merged_df['temp'] = imputer.fit_transform(merged_df[['Temperature (degC)']])
+
+
+
+#######################################################################
+
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error
+print("Training Linear regressor for time test split")
+# Load data
+# Prepare your dataset
+df = merged_df[['hour', 'weekday', 'precp', 'snowd','Snow_No Snow', 'Snow_Snow Possible', 'Snow_Snow', 'temp','sum']]
+
+# Set the window size
+window_size = 30
+
+# Initialize the lists to hold the train and test set errors
+train_errors = []
+test_errors = []
+
+# Loop through the data and fit a model for each window
+for i in range(window_size, len(df)):
+    # Split the data into train and test sets
+    train_data = df.iloc[i-window_size:i]
+    test_data = df.iloc[i:i+1]
+    
+    # Separate the features and target variable for the train and test sets
+    X_train = train_data.drop(columns=['sum'])
+    y_train = train_data['sum']
+    X_test = test_data.drop(columns=['sum'])
+    y_test = test_data['sum']
+    
+    # Fit a linear regression model
+    model = LinearRegression()
+    model.fit(X_train, y_train)
+    
+    # Calculate the train and test set errors
+    train_pred = model.predict(X_train)
+    train_error = np.sqrt(mean_squared_error(y_train, train_pred))
+    train_errors.append(train_error)
+    
+    test_pred = model.predict(X_test)
+    test_error = np.sqrt(mean_squared_error(y_test, test_pred))
+    test_errors.append(test_error)
+
+print("Linear regressor for time test split")
+# Calculate the average train and test set errors
+avg_train_error = np.mean(train_errors)
+avg_test_error = np.mean(test_errors)
+
+print(f"Average train set error: {avg_train_error}")
+print(f"Average test set error: {avg_test_error}")
+
+
 
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
@@ -258,7 +345,7 @@ mae = mean_absolute_error(y_test, y_pred)
 print()
 print("############################################# Task 5: Linear regressor  ######################################################")
 print()
-print("Error metrics for Linear regressor")
+print("Error metrics for Linear regressor with random train test split")
 print(f"Mean Squared Error: {mse}")
 print(f"R-squared: {r2}")
 print(f"Explained Variance Score: {evs}")
